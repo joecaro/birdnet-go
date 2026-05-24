@@ -1110,12 +1110,18 @@
               </div>
             {/if}
           </div>
+          {@const mapDisabledReason = mapLibraryLoading
+            ? t('settings.main.mapButtons.loading')
+            : !map
+              ? t('settings.main.mapButtons.unavailable')
+              : undefined}
           <div class="flex gap-2 mt-3">
             <button
               type="button"
               class="inline-flex items-center justify-center w-8 h-8 text-sm font-medium rounded-full bg-[var(--color-base-300)] hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Zoom in"
               disabled={!map || mapLibraryLoading}
+              title={mapDisabledReason}
               onclick={() => map?.zoomIn({ duration: 300 })}
             >
               +
@@ -1125,6 +1131,7 @@
               class="inline-flex items-center justify-center w-8 h-8 text-sm font-medium rounded-full bg-[var(--color-base-300)] hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Zoom out"
               disabled={!map || mapLibraryLoading}
+              title={mapDisabledReason}
               onclick={() => map?.zoomOut({ duration: 300 })}
             >
               -
@@ -1134,6 +1141,7 @@
               class="inline-flex items-center justify-center w-8 h-8 text-sm font-medium rounded-full bg-[var(--color-base-300)] hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Expand map to full screen"
               disabled={!map || mapLibraryLoading}
+              title={mapDisabledReason}
               onclick={openMapModal}
             >
               <Maximize2 class="size-4" />

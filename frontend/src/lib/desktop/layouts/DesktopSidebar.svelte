@@ -76,6 +76,7 @@ Performance Optimizations:
     MessageCircleQuestion,
     ExternalLink,
     Activity,
+    ListChecks,
   } from '@lucide/svelte';
   import { t } from '$lib/i18n';
   import CollapsibleNavSection from './CollapsibleNavSection.svelte';
@@ -169,6 +170,7 @@ Performance Optimizations:
     analyticsExact: actualRoute === '/ui/analytics',
     analyticsAdvanced: actualRoute === '/ui/analytics/advanced',
     analyticsSpecies: actualRoute === '/ui/analytics/species',
+    analyticsYardList: actualRoute === '/ui/analytics/yard-list',
     search: actualRoute.startsWith('/ui/search'),
     about: actualRoute.startsWith('/ui/about'),
     system: actualRoute.startsWith('/ui/system'),
@@ -235,6 +237,7 @@ Performance Optimizations:
     settingsSecurity: onNavigate ? '/settings/security' : '/ui/settings/security',
     settingsSupport: onNavigate ? '/settings/support' : '/ui/settings/support',
     settingsUserInterface: onNavigate ? '/settings/userinterface' : '/ui/settings/userinterface',
+    analyticsYardList: onNavigate ? '/analytics/yard-list' : '/ui/analytics/yard-list',
   });
 
   // Nav item definitions for collapsible sections
@@ -250,6 +253,12 @@ Performance Optimizations:
       label: t('analytics.species.title'),
       url: navigationUrls.analyticsSpecies,
       routeKey: 'analyticsSpecies',
+    },
+    {
+      icon: ListChecks,
+      label: t('analytics.yardList.title'),
+      url: navigationUrls.analyticsYardList,
+      routeKey: 'analyticsYardList',
     },
     {
       icon: TrendingUp,
@@ -310,18 +319,7 @@ Performance Optimizations:
   ]);
 
   let settingsItems: NavItem[] = $derived([
-    {
-      icon: SlidersHorizontal,
-      label: t('settings.sections.node'),
-      url: navigationUrls.settingsMain,
-      routeKey: 'settingsMain',
-    },
-    {
-      icon: Paintbrush,
-      label: t('settings.sections.userinterface'),
-      url: navigationUrls.settingsUserInterface,
-      routeKey: 'settingsUserInterface',
-    },
+    { type: 'heading', key: 'detection', label: t('settings.groups.detection') },
     {
       icon: Volume2,
       label: t('settings.sections.audio'),
@@ -346,6 +344,7 @@ Performance Optimizations:
       url: navigationUrls.settingsFilters,
       routeKey: 'settingsFilters',
     },
+    { type: 'heading', key: 'alerts', label: t('settings.groups.alerts') },
     {
       icon: Bell,
       label: t('settings.sections.notifications'),
@@ -357,6 +356,19 @@ Performance Optimizations:
       label: t('settings.sections.integration'),
       url: navigationUrls.settingsIntegrations,
       routeKey: 'settingsIntegrations',
+    },
+    { type: 'heading', key: 'system', label: t('settings.groups.system') },
+    {
+      icon: SlidersHorizontal,
+      label: t('settings.sections.node'),
+      url: navigationUrls.settingsMain,
+      routeKey: 'settingsMain',
+    },
+    {
+      icon: Paintbrush,
+      label: t('settings.sections.userinterface'),
+      url: navigationUrls.settingsUserInterface,
+      routeKey: 'settingsUserInterface',
     },
     {
       icon: Shield,

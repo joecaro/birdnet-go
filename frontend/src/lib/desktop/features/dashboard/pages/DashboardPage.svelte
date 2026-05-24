@@ -40,6 +40,7 @@ Performance Optimizations:
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import ReconnectingEventSource from 'reconnecting-eventsource';
+  import SetupChecklistCard from '$lib/desktop/features/dashboard/components/SetupChecklistCard.svelte';
   import CurrentlyHearingCard from '$lib/desktop/features/dashboard/components/CurrentlyHearingCard.svelte';
   import DailySummaryCard from '$lib/desktop/features/dashboard/components/DailySummaryCard.svelte';
   import DetectionCardGrid from '$lib/desktop/features/dashboard/components/DetectionCardGrid.svelte';
@@ -66,7 +67,7 @@ Performance Optimizations:
   import { api } from '$lib/utils/api';
   import { buildAppUrl } from '$lib/utils/urlHelpers';
   import { navigation } from '$lib/stores/navigation.svelte';
-  import { connectionState } from '$lib/stores/connectionState.svelte';
+  import { connectionState, onSSEActivity, onSSEError } from '$lib/stores/connectionState.svelte';
   import { appState } from '$lib/stores/appState.svelte';
   import {
     birdnetSettings,
@@ -165,6 +166,7 @@ Performance Optimizations:
   let summaryLimit = $state(30); // Default from backend (conf/defaults.go) - species count limit for daily summary
   let configLoaded = $state(false); // Gates reactive preloading until config is loaded
   let pendingDetections = $state<PendingDetection[]>([]);
+  let detectionStreamState = $state<'connecting' | 'connected' | 'reconnecting'>('connecting');
 
   // Server timezone from sun times API, used for date navigation constraints.
   // When the server is ahead of the browser (e.g., server in Sydney, browser in California),
@@ -177,10 +179,10 @@ Performance Optimizations:
 
   // Dashboard layout: derive enabled elements from layout config with fallback
   const defaultElements: DashboardElement[] = [
-    { id: 'daily-summary-0', type: 'daily-summary', enabled: true, summary: { summaryLimit: 30 } },
     { id: 'currently-hearing-0', type: 'currently-hearing', enabled: true },
-    { id: 'live-spectrogram-0', type: 'live-spectrogram', enabled: true },
     { id: 'detections-grid-0', type: 'detections-grid', enabled: true },
+    { id: 'daily-summary-0', type: 'daily-summary', enabled: true, summary: { summaryLimit: 30 } },
+    { id: 'live-spectrogram-0', type: 'live-spectrogram', enabled: true },
   ];
   // Only use the settings store layout when data was actually fetched from the
   // server. The store initializes with default elements, so checking isLoading
@@ -203,7 +205,36 @@ Performance Optimizations:
             }
           : { elements: defaultElements, source: 'hardcoded-defaults' as const }
   );
-  let layoutElements = $derived(layoutResolution.elements);
+
+  function normalizeDashboardElementOrder(elements: DashboardElement[]): DashboardElement[] {
+    // Canonical order: live now -> live spectrogram -> daily history -> recent clips.
+    // Only reorder when the layout is one of the known default permutations of
+    // the four standard elements, with no custom elements added/removed. This
+    // preserves user-customized layouts (banners, video embeds, hidden cards).
+    const STANDARD_TYPES: ReadonlyArray<DashboardElement['type']> = [
+      'currently-hearing',
+      'live-spectrogram',
+      'daily-summary',
+      'detections-grid',
+    ];
+
+    if (elements.length !== STANDARD_TYPES.length) return elements;
+    const types = elements.map(element => element.type);
+    const isStandardSet =
+      types.length === STANDARD_TYPES.length &&
+      STANDARD_TYPES.every(t => types.includes(t)) &&
+      types.every(t => STANDARD_TYPES.includes(t));
+    if (!isStandardSet) return elements;
+
+    const alreadyCanonical = STANDARD_TYPES.every((t, i) => types[i] === t);
+    if (alreadyCanonical) return elements;
+
+    return STANDARD_TYPES.map(type => elements.find(element => element.type === type)).filter(
+      (element): element is DashboardElement => element !== undefined
+    );
+  }
+
+  let layoutElements = $derived(normalizeDashboardElementOrder(layoutResolution.elements));
 
   // Current layout as a DashboardLayout object for DashboardEditMode
   let currentLayout = $derived<DashboardLayout>({ elements: layoutElements });
@@ -633,6 +664,7 @@ Performance Optimizations:
   // Connect to SSE stream for real-time updates using ReconnectingEventSource
   function connectToDetectionStream() {
     logger.debug('Connecting to SSE stream at /api/v2/detections/stream');
+    detectionStreamState = 'connecting';
 
     // Clean up existing connection
     if (eventSource) {
@@ -648,11 +680,15 @@ Performance Optimizations:
       });
 
       eventSource.onopen = () => {
+        detectionStreamState = 'connected';
+        onSSEActivity();
         logger.debug('SSE connection opened');
       };
 
       eventSource.onmessage = event => {
         try {
+          detectionStreamState = 'connected';
+          onSSEActivity();
           const data = JSON.parse(event.data);
 
           // Check if this is a structured message with eventType
@@ -688,6 +724,8 @@ Performance Optimizations:
         try {
           // eslint-disable-next-line no-undef
           const messageEvent = event as MessageEvent;
+          detectionStreamState = 'connected';
+          onSSEActivity();
           const data = JSON.parse(messageEvent.data);
           logger.debug('Connected event received:', data);
         } catch (error) {
@@ -699,6 +737,8 @@ Performance Optimizations:
         try {
           // eslint-disable-next-line no-undef
           const messageEvent = event as MessageEvent;
+          detectionStreamState = 'connected';
+          onSSEActivity();
           const data = JSON.parse(messageEvent.data);
           handleSSEDetection(data);
         } catch (error) {
@@ -710,6 +750,8 @@ Performance Optimizations:
         try {
           // eslint-disable-next-line no-undef
           const messageEvent = event as MessageEvent;
+          detectionStreamState = 'connected';
+          onSSEActivity();
           const data = JSON.parse(messageEvent.data);
           logger.debug('Heartbeat event received, clients:', data.clients);
         } catch (error) {
@@ -721,6 +763,8 @@ Performance Optimizations:
         try {
           // eslint-disable-next-line no-undef
           const messageEvent = event as MessageEvent;
+          detectionStreamState = 'connected';
+          onSSEActivity();
           const data = JSON.parse(messageEvent.data);
           if (Array.isArray(data)) {
             pendingDetections = data as PendingDetection[];
@@ -731,6 +775,8 @@ Performance Optimizations:
       });
 
       eventSource.onerror = () => {
+        detectionStreamState = 'reconnecting';
+        onSSEError();
         // EventSource onerror receives an Event (not an Error); log a descriptive message
         logger.warn('SSE connection error, will auto-reconnect', null, {
           component: 'DashboardPage',
@@ -741,6 +787,7 @@ Performance Optimizations:
         // No need for manual reconnection logic
       };
     } catch (error) {
+      detectionStreamState = 'reconnecting';
       logger.error('Failed to create ReconnectingEventSource:', error);
       // Try again in 5 seconds if initial setup fails
       setTimeout(() => connectToDetectionStream(), 5000);
@@ -1350,6 +1397,7 @@ Performance Optimizations:
 </script>
 
 <div class="col-span-12">
+  <SetupChecklistCard />
   <DashboardEditMode
     layout={currentLayout}
     editMode={isEditing}
@@ -1569,7 +1617,13 @@ Performance Optimizations:
           }}
         />
       {:else if element.type === 'currently-hearing'}
-        <CurrentlyHearingCard detections={isViewingToday ? pendingDetections : []} />
+        <CurrentlyHearingCard
+          detections={isViewingToday ? pendingDetections : []}
+          isOnline={connectionState.isOnline}
+          {isViewingToday}
+          updatesPaused={freezeCount > 0}
+          streamState={detectionStreamState}
+        />
       {:else if element.type === 'live-spectrogram'}
         {#if isViewingToday}
           <MiniSpectrogram {pendingDetections} />

@@ -11,6 +11,7 @@
   import OfflineBanner from '$lib/desktop/components/ui/OfflineBanner.svelte';
   import RestartBanner from '$lib/desktop/components/ui/RestartBanner.svelte';
   import { fetchRestartStatus } from '$lib/stores/restart.svelte';
+  import { browserDetectionNotifications } from '$lib/stores/browserDetectionNotifications.svelte';
 
   interface Props {
     title?: string;
@@ -59,6 +60,7 @@
     }
 
     // SSE notifications are auto-initialized when imported
+    browserDetectionNotifications.start();
 
     // Set theme from localStorage
     const savedTheme = globalThis.localStorage.getItem('theme');
@@ -80,6 +82,10 @@
           'https:' + window.location.href.substring(window.location.protocol.length);
       }
     }
+
+    return () => {
+      browserDetectionNotifications.dispose();
+    };
   });
 
   // Handle sidebar toggle

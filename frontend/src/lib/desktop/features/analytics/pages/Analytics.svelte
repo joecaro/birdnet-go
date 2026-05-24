@@ -12,6 +12,7 @@
   import FilterForm from '../components/forms/FilterForm.svelte';
   import ChartCard from '../components/ui/ChartCard.svelte';
   import StatCard from '../components/ui/StatCard.svelte';
+  import WeatherSummaryCard from '../components/ui/WeatherSummaryCard.svelte';
   import { handleBirdImageError } from '$lib/desktop/components/ui/image-utils';
   import { buildAppUrl } from '$lib/utils/urlHelpers';
 
@@ -165,6 +166,46 @@
   // Data arrays
   let recentDetections = $state<Detection[]>([]);
   let newSpeciesData = $state<NewSpeciesData[]>([]);
+  // Confidence buckets aggregated from species summary (count weighted by avg confidence)
+  let confidenceBuckets = $state<number[]>([0, 0, 0, 0, 0]);
+
+  // Day-of-week (Mon..Sun) and season (Spring/Summer/Fall/Winter) buckets, derived from daily trend data
+  let dayOfWeekBuckets = $derived.by(() => {
+    const buckets = [0, 0, 0, 0, 0, 0, 0]; // Mon..Sun
+    const items = chartData.trend?.data ?? [];
+    for (const item of items) {
+      if (!item.date) continue;
+      const d = parseLocalDateString(item.date);
+      if (!d || isNaN(d.getTime())) continue;
+      // JS getDay(): 0=Sun..6=Sat → remap to Mon=0..Sun=6
+      const idx = (d.getDay() + 6) % 7;
+      // eslint-disable-next-line security/detect-object-injection -- idx is 0..6 integer
+      buckets[idx] += item.count || 0;
+    }
+    return buckets;
+  });
+
+  let seasonBuckets = $derived.by(() => {
+    const buckets = [0, 0, 0, 0]; // Spring, Summer, Fall, Winter
+    const items = chartData.trend?.data ?? [];
+    for (const item of items) {
+      if (!item.date) continue;
+      const d = parseLocalDateString(item.date);
+      if (!d || isNaN(d.getTime())) continue;
+      const m = d.getMonth(); // 0..11
+      let idx: number;
+      if (m >= 2 && m <= 4)
+        idx = 0; // Mar-May
+      else if (m >= 5 && m <= 7)
+        idx = 1; // Jun-Aug
+      else if (m >= 8 && m <= 10)
+        idx = 2; // Sep-Nov
+      else idx = 3; // Dec-Feb
+      // eslint-disable-next-line security/detect-object-injection -- idx is 0..3 integer
+      buckets[idx] += item.count || 0;
+    }
+    return buckets;
+  });
 
   // Chart data storage
   let chartData = $state<ChartData>({
@@ -413,6 +454,8 @@
       let totalConfidence = 0;
       let mostCommonSpecies = '';
       let mostCommonCount = 0;
+      // 5 buckets: <0.6, 0.6–0.7, 0.7–0.8, 0.8–0.9, ≥0.9
+      const buckets = [0, 0, 0, 0, 0];
 
       speciesArray.forEach(species => {
         const count = species.count || 0;
@@ -425,7 +468,17 @@
           mostCommonCount = count;
           mostCommonSpecies = species.common_name || t('analytics.recentDetections.unknown');
         }
+
+        let idx: number;
+        if (confidence < 0.6) idx = 0;
+        else if (confidence < 0.7) idx = 1;
+        else if (confidence < 0.8) idx = 2;
+        else if (confidence < 0.9) idx = 3;
+        else idx = 4;
+        // eslint-disable-next-line security/detect-object-injection -- idx is a controlled integer 0..4
+        buckets[idx] += count;
       });
+      confidenceBuckets = buckets;
 
       summary = {
         totalDetections,
@@ -1191,6 +1244,142 @@
     </div>
   {/if}
 
+  <!-- Recent Detections (moved to top for at-a-glance scanning) -->
+  <div class="card bg-[var(--color-base-100)] shadow-xs">
+    <div class="card-body card-padding">
+      <h2 class="card-title">{t('analytics.recentDetections.title')}</h2>
+      {#if isLoading}
+        <div class="flex justify-center items-center p-8">
+          <span class="loading loading-spinner loading-lg text-[var(--color-primary)]"></span>
+        </div>
+      {:else}
+        <!-- Desktop/tablet table -->
+        <div class="overflow-x-auto hidden md:block">
+          <table class="table w-full">
+            <thead>
+              <tr>
+                <th>{t('analytics.recentDetections.headers.dateTime')}</th>
+                <th>{t('analytics.recentDetections.headers.species')}</th>
+                <th>{t('analytics.recentDetections.headers.confidence')}</th>
+                <th>{t('analytics.recentDetections.headers.timeOfDay')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each recentDetections as detection, index (detection.id ?? index)}
+                <tr
+                  class={index % 2 === 0
+                    ? 'bg-[var(--color-base-100)]'
+                    : 'bg-[var(--color-base-200)]'}
+                >
+                  <td>{detection.timestamp ? formatDateTime(detection.timestamp) : '-'}</td>
+                  <td>
+                    <div class="flex items-center gap-2">
+                      <div class="w-8 h-8 rounded-full bg-[var(--color-base-200)] overflow-hidden">
+                        <img
+                          src={buildAppUrl(
+                            `/api/v2/media/species-image?name=${encodeURIComponent(detection.scientificName)}`
+                          )}
+                          alt={detection.commonName || 'Unknown species'}
+                          class="w-full h-full object-cover"
+                          onerror={handleBirdImageError}
+                          loading="lazy"
+                          decoding="async"
+                          fetchpriority="low"
+                        />
+                      </div>
+                      <div>
+                        <div class="font-medium">
+                          {detection.commonName || t('analytics.recentDetections.unknownSpecies')}
+                        </div>
+                        <div class="text-xs opacity-50">{detection.scientificName || ''}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="flex items-center gap-2">
+                      <div class="w-16 h-4 rounded-full overflow-hidden bg-[var(--color-base-200)]">
+                        <div
+                          class="h-full {detection.confidence >= 0.8
+                            ? 'bg-[var(--color-success)]'
+                            : detection.confidence >= 0.4
+                              ? 'bg-[var(--color-warning)]'
+                              : 'bg-[var(--color-error)]'}"
+                          style:width="{detection.confidence * 100}%"
+                        ></div>
+                      </div>
+                      <span class="text-sm">{formatPercentage(detection.confidence)}</span>
+                    </div>
+                  </td>
+                  <td>{detection.timeOfDay || t('analytics.recentDetections.unknown')}</td>
+                </tr>
+              {:else}
+                <tr>
+                  <td
+                    colspan="4"
+                    class="text-center py-4 text-[var(--color-base-content)] opacity-50"
+                    >{t('analytics.recentDetections.noRecentDetections')}</td
+                  >
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile list -->
+        <div class="md:hidden space-y-2">
+          {#each recentDetections as detection, index (detection.id ?? index)}
+            <div class="bg-[var(--color-base-100)] rounded-lg p-3">
+              <div class="flex items-start gap-3">
+                <div
+                  class="w-10 h-10 rounded-full bg-[var(--color-base-200)] overflow-hidden shrink-0"
+                >
+                  <img
+                    src={buildAppUrl(
+                      `/api/v2/media/species-image?name=${encodeURIComponent(detection.scientificName)}`
+                    )}
+                    alt={detection.commonName || 'Unknown species'}
+                    class="w-full h-full object-cover"
+                    onerror={handleBirdImageError}
+                    loading="lazy"
+                    decoding="async"
+                    fetchpriority="low"
+                  />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-[var(--color-base-content)]/70">
+                    {detection.timestamp ? formatDateTime(detection.timestamp) : '-'}
+                  </div>
+                  <div class="font-medium leading-tight truncate">
+                    {detection.commonName || t('analytics.recentDetections.unknownSpecies')}
+                  </div>
+                  <div class="text-xs opacity-60 truncate">{detection.scientificName || ''}</div>
+                  <div class="mt-2 flex items-center justify-between">
+                    <span
+                      class="badge {detection.confidence >= 0.8
+                        ? 'badge-success'
+                        : detection.confidence >= 0.4
+                          ? 'badge-warning'
+                          : 'badge-error'}"
+                    >
+                      {formatPercentage(detection.confidence)}
+                    </span>
+                    <span class="text-xs opacity-70"
+                      >{detection.timeOfDay || t('analytics.recentDetections.unknown')}</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+          {:else}
+            <div class="text-center py-4 text-[var(--color-base-content)] opacity-50">
+              {t('analytics.recentDetections.noRecentDetections')}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  </div>
+
   <!-- Summary Stats Cards -->
   <div class="grid gap-4 summary-cards-grid">
     <!-- Total Detections Card -->
@@ -1311,6 +1500,9 @@
   <!-- Filter Controls -->
   <FilterForm bind:filters {isLoading} onSubmit={fetchData} onReset={resetFilters} />
 
+  <!-- Weather context for selected date (renders nothing if no provider configured) -->
+  <WeatherSummaryCard date={filters.endDate || filters.startDate || undefined} />
+
   <!-- Charts Section -->
   <div class="grid gap-4 charts-grid">
     <!-- Species Distribution Chart -->
@@ -1324,6 +1516,128 @@
     />
   </div>
 
+  <!-- Confidence Distribution -->
+  {#if !isLoading && confidenceBuckets.some(v => v > 0)}
+    {@const bucketTotal = confidenceBuckets.reduce((s, v) => s + v, 0)}
+    {@const bucketLabels = ['<60%', '60–70%', '70–80%', '80–90%', '≥90%']}
+    {@const bucketColors = [
+      'bg-[var(--color-error)]/70',
+      'bg-[var(--color-warning)]/70',
+      'bg-[var(--color-warning)]/50',
+      'bg-[var(--color-success)]/60',
+      'bg-[var(--color-success)]/80',
+    ]}
+    <div class="card bg-[var(--color-base-100)] shadow-xs">
+      <div class="card-body card-padding">
+        <h2 class="card-title">{t('analytics.charts.confidenceDistribution')}</h2>
+        <p class="text-sm text-[var(--color-base-content)]/60 mb-3">
+          {t('analytics.charts.confidenceDistributionSubtitle')}
+        </p>
+        <div class="grid grid-cols-5 gap-3">
+          {#each confidenceBuckets as count, i (i)}
+            {@const pct = bucketTotal > 0 ? (count / bucketTotal) * 100 : 0}
+            <div class="flex flex-col items-stretch">
+              <div class="relative h-32 rounded-md bg-[var(--color-base-200)] overflow-hidden">
+                <div
+                  class="absolute bottom-0 left-0 right-0 {safeArrayAccess(
+                    bucketColors,
+                    i,
+                    ''
+                  )} transition-[height] duration-500"
+                  style:height="{pct}%"
+                  aria-hidden="true"
+                ></div>
+              </div>
+              <div class="mt-2 text-center">
+                <div class="text-xs text-[var(--color-base-content)]/60">
+                  {safeArrayAccess(bucketLabels, i, '')}
+                </div>
+                <div class="text-sm font-semibold tabular-nums">{formatNumber(count)}</div>
+                <div class="text-[10px] text-[var(--color-base-content)]/50">
+                  {pct.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Day of Week + Season buckets -->
+  {#if !isLoading && (dayOfWeekBuckets.some(v => v > 0) || seasonBuckets.some(v => v > 0))}
+    {@const dowLabels = [
+      t('analytics.charts.days.mon'),
+      t('analytics.charts.days.tue'),
+      t('analytics.charts.days.wed'),
+      t('analytics.charts.days.thu'),
+      t('analytics.charts.days.fri'),
+      t('analytics.charts.days.sat'),
+      t('analytics.charts.days.sun'),
+    ]}
+    {@const dowMax = Math.max(1, ...dayOfWeekBuckets)}
+    {@const seasonLabels = [
+      t('analytics.charts.seasons.spring'),
+      t('analytics.charts.seasons.summer'),
+      t('analytics.charts.seasons.fall'),
+      t('analytics.charts.seasons.winter'),
+    ]}
+    {@const seasonMax = Math.max(1, ...seasonBuckets)}
+    <div class="grid gap-4 charts-grid">
+      <div class="card bg-[var(--color-base-100)] shadow-xs">
+        <div class="card-body card-padding">
+          <h2 class="card-title">{t('analytics.charts.detectionsByDayOfWeek')}</h2>
+          <div class="grid grid-cols-7 gap-2 mt-3">
+            {#each dayOfWeekBuckets as count, i (i)}
+              {@const pct = (count / dowMax) * 100}
+              <div class="flex flex-col items-stretch">
+                <div class="relative h-28 rounded-md bg-[var(--color-base-200)] overflow-hidden">
+                  <div
+                    class="absolute bottom-0 left-0 right-0 bg-[var(--color-primary)]/70 transition-[height] duration-500"
+                    style:height="{pct}%"
+                    aria-hidden="true"
+                  ></div>
+                </div>
+                <div class="mt-2 text-center">
+                  <div class="text-xs text-[var(--color-base-content)]/60">
+                    {safeArrayAccess(dowLabels, i, '')}
+                  </div>
+                  <div class="text-sm font-semibold tabular-nums">{formatNumber(count)}</div>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+
+      <div class="card bg-[var(--color-base-100)] shadow-xs">
+        <div class="card-body card-padding">
+          <h2 class="card-title">{t('analytics.charts.detectionsBySeason')}</h2>
+          <div class="grid grid-cols-4 gap-2 mt-3">
+            {#each seasonBuckets as count, i (i)}
+              {@const pct = (count / seasonMax) * 100}
+              <div class="flex flex-col items-stretch">
+                <div class="relative h-28 rounded-md bg-[var(--color-base-200)] overflow-hidden">
+                  <div
+                    class="absolute bottom-0 left-0 right-0 bg-[var(--color-secondary)]/70 transition-[height] duration-500"
+                    style:height="{pct}%"
+                    aria-hidden="true"
+                  ></div>
+                </div>
+                <div class="mt-2 text-center">
+                  <div class="text-xs text-[var(--color-base-content)]/60">
+                    {safeArrayAccess(seasonLabels, i, '')}
+                  </div>
+                  <div class="text-sm font-semibold tabular-nums">{formatNumber(count)}</div>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+    </div>
+  {/if}
+
   <!-- Trend Charts -->
   <ChartCard title={t('analytics.charts.detectionTrends')} chartId="trendChart" {isLoading} />
 
@@ -1336,146 +1650,6 @@
     emptyMessage={t('analytics.charts.noNewSpecies')}
     chartHeight="h-auto"
   />
-
-  <!-- Data Table for Recent Detections -->
-  <div class="card bg-[var(--color-base-100)] shadow-xs">
-    <div class="card-body card-padding">
-      <h2 class="card-title">{t('analytics.recentDetections.title')}</h2>
-      {#if isLoading}
-        <div class="flex justify-center items-center p-8">
-          <span class="loading loading-spinner loading-lg text-[var(--color-primary)]"></span>
-        </div>
-      {:else}
-        <!-- Desktop/tablet table -->
-        <div class="overflow-x-auto hidden md:block">
-          <table class="table w-full">
-            <thead>
-              <tr>
-                <th>{t('analytics.recentDetections.headers.dateTime')}</th>
-                <th>{t('analytics.recentDetections.headers.species')}</th>
-                <th>{t('analytics.recentDetections.headers.confidence')}</th>
-                <th>{t('analytics.recentDetections.headers.timeOfDay')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each recentDetections as detection, index (detection.id ?? index)}
-                <tr
-                  class={index % 2 === 0
-                    ? 'bg-[var(--color-base-100)]'
-                    : 'bg-[var(--color-base-200)]'}
-                >
-                  <td>{detection.timestamp ? formatDateTime(detection.timestamp) : '-'}</td>
-                  <td>
-                    <div class="flex items-center gap-2">
-                      <div class="w-8 h-8 rounded-full bg-[var(--color-base-200)] overflow-hidden">
-                        <!-- PERFORMANCE OPTIMIZATION: Enhanced image loading for species thumbnails -->
-                        <img
-                          src={buildAppUrl(
-                            `/api/v2/media/species-image?name=${encodeURIComponent(detection.scientificName)}`
-                          )}
-                          alt={detection.commonName || 'Unknown species'}
-                          class="w-full h-full object-cover"
-                          onerror={handleBirdImageError}
-                          loading="lazy"
-                          decoding="async"
-                          fetchpriority="low"
-                        />
-                      </div>
-                      <div>
-                        <div class="font-medium">
-                          {detection.commonName || t('analytics.recentDetections.unknownSpecies')}
-                        </div>
-                        <div class="text-xs opacity-50">{detection.scientificName || ''}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="flex items-center gap-2">
-                      <div class="w-16 h-4 rounded-full overflow-hidden bg-[var(--color-base-200)]">
-                        <div
-                          class="h-full {detection.confidence >= 0.8
-                            ? 'bg-[var(--color-success)]'
-                            : detection.confidence >= 0.4
-                              ? 'bg-[var(--color-warning)]'
-                              : 'bg-[var(--color-error)]'}"
-                          style:width="{detection.confidence * 100}%"
-                        ></div>
-                      </div>
-                      <span class="text-sm">{formatPercentage(detection.confidence)}</span>
-                    </div>
-                  </td>
-                  <td>{detection.timeOfDay || t('analytics.recentDetections.unknown')}</td>
-                </tr>
-              {:else}
-                <tr>
-                  <td
-                    colspan="4"
-                    class="text-center py-4 text-[var(--color-base-content)] opacity-50"
-                    >{t('analytics.recentDetections.noRecentDetections')}</td
-                  >
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Mobile list -->
-        <div class="md:hidden space-y-2">
-          {#each recentDetections as detection, index (detection.id ?? index)}
-            <div class="bg-[var(--color-base-100)] rounded-lg p-3">
-              <div class="flex items-start gap-3">
-                <!-- Thumbnail -->
-                <div
-                  class="w-10 h-10 rounded-full bg-[var(--color-base-200)] overflow-hidden shrink-0"
-                >
-                  <img
-                    src={buildAppUrl(
-                      `/api/v2/media/species-image?name=${encodeURIComponent(detection.scientificName)}`
-                    )}
-                    alt={detection.commonName || 'Unknown species'}
-                    class="w-full h-full object-cover"
-                    onerror={handleBirdImageError}
-                    loading="lazy"
-                    decoding="async"
-                    fetchpriority="low"
-                  />
-                </div>
-                <!-- Content -->
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm text-[var(--color-base-content)]/70">
-                    {detection.timestamp ? formatDateTime(detection.timestamp) : '-'}
-                  </div>
-                  <div class="font-medium leading-tight truncate">
-                    {detection.commonName || t('analytics.recentDetections.unknownSpecies')}
-                  </div>
-                  <div class="text-xs opacity-60 truncate">{detection.scientificName || ''}</div>
-                  <div class="mt-2 flex items-center justify-between">
-                    <!-- Confidence badge -->
-                    <span
-                      class="badge {detection.confidence >= 0.8
-                        ? 'badge-success'
-                        : detection.confidence >= 0.4
-                          ? 'badge-warning'
-                          : 'badge-error'}"
-                    >
-                      {formatPercentage(detection.confidence)}
-                    </span>
-                    <span class="text-xs opacity-70"
-                      >{detection.timeOfDay || t('analytics.recentDetections.unknown')}</span
-                    >
-                  </div>
-                </div>
-              </div>
-            </div>
-          {:else}
-            <div class="text-center py-4 text-[var(--color-base-content)] opacity-50">
-              {t('analytics.recentDetections.noRecentDetections')}
-            </div>
-          {/each}
-        </div>
-      {/if}
-    </div>
-  </div>
 </div>
 
 <style>

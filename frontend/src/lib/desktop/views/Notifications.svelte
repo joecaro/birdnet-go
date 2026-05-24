@@ -34,9 +34,8 @@
   import { formatDate } from '$lib/utils/formatters';
   import { getStoredValue, setStoredValue } from '$lib/utils/storage';
 
-  // SPINNER CONTROL: Set to false to disable loading spinners (reduces flickering)
-  // Change back to true to re-enable spinners for testing
-  const ENABLE_LOADING_SPINNERS = false;
+  // Delay before showing the spinner so fast loads don't flicker.
+  const SPINNER_DELAY_MS = 200;
 
   // View mode: 'grouped' or 'flat' with localStorage persistence
   const STORAGE_KEY = 'notifications-view-mode';
@@ -51,6 +50,19 @@
   /** @type {import('$lib/utils/notifications').Notification[]} */
   let notifications = $state([]);
   let loading = $state(false);
+  let showSpinner = $state(false);
+
+  // Defer spinner visibility so brief loads don't flash a spinner.
+  $effect(() => {
+    if (!loading) {
+      showSpinner = false;
+      return;
+    }
+    const id = setTimeout(() => {
+      showSpinner = true;
+    }, SPINNER_DELAY_MS);
+    return () => clearTimeout(id);
+  });
   let currentPage = $state(1);
   let totalPages = $state(1);
   let pageSize = 20;
@@ -540,15 +552,18 @@
 
   <!-- Notifications List -->
   <div class="space-y-3" role="region" aria-label="Notifications list">
-    {#if ENABLE_LOADING_SPINNERS && loading}
+    {#if loading && showSpinner}
       <div class="card bg-[var(--color-base-100)] shadow-2xs">
-        <div class="card-body">
-          <div class="flex justify-center">
-            <div class="loading loading-spinner loading-lg"></div>
+        <div class="card-body" role="status" aria-live="polite">
+          <div class="flex justify-center items-center gap-3">
+            <div class="loading loading-spinner loading-lg" aria-hidden="true"></div>
+            <span class="text-sm text-[var(--color-base-content)]/70">
+              {t('common.ui.loadingNotifications')}
+            </span>
           </div>
         </div>
       </div>
-    {:else if notifications.length === 0}
+    {:else if !loading && notifications.length === 0}
       <div class="card bg-[var(--color-base-100)] shadow-2xs">
         <div class="card-body text-center py-12">
           <span class="opacity-30 mb-4" aria-hidden="true">

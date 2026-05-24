@@ -272,7 +272,7 @@
     use:dndzone={{ items: editElements, flipDurationMs: 200 }}
     onconsider={handleDndConsider}
     onfinalize={handleDndFinalize}
-    class="relative z-40 grid grid-cols-2 gap-4 pt-16"
+    class="relative z-40 grid grid-cols-2 gap-3 pt-16"
   >
     {#each editElements as element, index (element.id)}
       <div class={getEffectiveWidth(element) === 'half' ? 'col-span-1' : 'col-span-2'}>
@@ -308,7 +308,7 @@
   </div>
 {:else}
   <!-- Normal mode: render elements from layout with grid -->
-  <div class="grid grid-cols-2 gap-4">
+  <div class="grid grid-cols-2 gap-3">
     {#each layout.elements.filter(e => e.enabled) as element (element.id ?? element.type)}
       <div class={getEffectiveWidth(element) === 'half' ? 'col-span-1' : 'col-span-2'}>
         {@render renderElement(element, false, noopUpdater)}

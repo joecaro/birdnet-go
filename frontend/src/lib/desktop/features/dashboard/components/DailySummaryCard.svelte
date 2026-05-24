@@ -838,22 +838,22 @@ Responsive Breakpoints:
   />
 {:else if loadingPhase === 'error'}
   <section
-    class="daily-summary-card card col-span-12 bg-[var(--color-base-100)] shadow-sm rounded-2xl border border-border-100 overflow-visible"
+    class="daily-summary-card card col-span-12 overflow-visible rounded-xl border border-border-100 bg-[var(--color-base-100)] shadow-xs"
   >
-    <div class="px-6 py-4 border-b border-[var(--color-base-200)] overflow-visible">
+    <div class="overflow-visible border-b border-[var(--color-base-200)] px-4 py-3">
       <div
         class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between overflow-visible"
       >
         <div class="flex flex-col">
-          <h3 class="font-semibold">{t('dashboard.dailySummary.title')}</h3>
-          <p class="text-sm text-[var(--color-base-content)]/60">
+          <h3 class="text-sm font-semibold">{t('dashboard.dailySummary.title')}</h3>
+          <p class="text-xs text-[var(--color-base-content)]/55">
             {t('dashboard.dailySummary.subtitle')}
           </p>
         </div>
         {@render navigationControls()}
       </div>
     </div>
-    <div class="p-6">
+    <div class="p-4">
       <div class="alert alert-error">
         <XCircle class="size-6" />
         <span>{error}</span>
@@ -862,16 +862,16 @@ Responsive Breakpoints:
   </section>
 {:else if loadingPhase === 'loaded'}
   <section
-    class="daily-summary-card card col-span-12 bg-[var(--color-base-100)] shadow-sm rounded-2xl border border-border-100 overflow-visible"
+    class="daily-summary-card card col-span-12 overflow-visible rounded-xl border border-border-100 bg-[var(--color-base-100)] shadow-xs"
   >
     <!-- Card Header with Date Navigation -->
-    <div class="px-6 py-4 border-b border-[var(--color-base-200)] overflow-visible">
+    <div class="overflow-visible border-b border-[var(--color-base-200)] px-4 py-3">
       <div
         class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between overflow-visible"
       >
         <div class="flex flex-col">
-          <h3 class="font-semibold">{t('dashboard.dailySummary.title')}</h3>
-          <p class="text-sm text-[var(--color-base-content)]/60">
+          <h3 class="text-sm font-semibold">{t('dashboard.dailySummary.title')}</h3>
+          <p class="text-xs text-[var(--color-base-content)]/55">
             {t('dashboard.dailySummary.subtitle')}
           </p>
         </div>
@@ -880,7 +880,7 @@ Responsive Breakpoints:
     </div>
 
     <!-- Grid Content -->
-    <div class="p-6 pt-8">
+    <div class="p-4 pt-6">
       <div class="overflow-x-auto overflow-y-visible">
         <div
           class="daily-summary-grid min-w-[900px]"

@@ -6,9 +6,9 @@
   import { navigation } from '$lib/stores/navigation.svelte';
   import { AlertTriangle } from '@lucide/svelte';
 
-  // SPINNER CONTROL: Set to false to disable loading spinners (reduces flickering)
-  // Change back to true to re-enable spinners for testing
-  const ENABLE_LOADING_SPINNERS = false;
+  // Delay before showing the spinner so fast loads don't flicker a spinner for one frame.
+  // Was previously disabled entirely; the page looked frozen on slow loads.
+  const SPINNER_DELAY_MS = 200;
   import MainSettingsSection from '$lib/desktop/features/settings/pages/MainSettingsPage.svelte';
   import AudioSettingsSection from '$lib/desktop/features/settings/pages/AudioSettingsPage.svelte';
   import FilterSettingsSection from '$lib/desktop/features/settings/pages/FilterSettingsPage.svelte';
@@ -54,6 +54,19 @@
   onMount(() => {
     settingsActions.loadSettings();
   });
+
+  // Defer spinner visibility so fast loads don't flash a spinner for one frame.
+  let showSpinner = $state(false);
+  $effect(() => {
+    if (!store.isLoading) {
+      showSpinner = false;
+      return;
+    }
+    const id = setTimeout(() => {
+      showSpinner = true;
+    }, SPINNER_DELAY_MS);
+    return () => clearTimeout(id);
+  });
 </script>
 
 <svelte:head>
@@ -82,12 +95,12 @@
   {/if}
 
   <!-- Loading State -->
-  {#if ENABLE_LOADING_SPINNERS && store.isLoading}
-    <div class="flex justify-center items-center py-12">
+  {#if store.isLoading && showSpinner}
+    <div class="flex justify-center items-center py-12" role="status" aria-live="polite">
       <LoadingSpinner size="lg" />
       <span class="ml-3 text-lg">{t('common.ui.loadingSettings')}</span>
     </div>
-  {:else}
+  {:else if !store.isLoading}
     <!-- Settings Content -->
     <div class="space-y-6">
       {#if currentSection === 'analysis'}

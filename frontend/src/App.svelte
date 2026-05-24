@@ -34,6 +34,7 @@
   let Analytics = $state<Component | null>(null);
   let AdvancedAnalytics = $state<Component | null>(null);
   let Species = $state<Component | null>(null);
+  let YardList = $state<Component | null>(null);
   let Search = $state<Component | null>(null);
   let About = $state<Component | null>(null);
   let Help = $state<Component | null>(null);
@@ -112,6 +113,12 @@
       page: 'analytics/advanced',
       titleKey: 'pageTitle.advancedAnalytics',
       component: 'advanced-analytics',
+    },
+    {
+      route: 'yard-list',
+      page: 'analytics/yard-list',
+      titleKey: 'analytics.yardList.pageTitle',
+      component: 'yard-list',
     },
     { route: 'search', page: 'search', titleKey: 'navigation.search', component: 'search' },
     {
@@ -194,6 +201,12 @@
           if (!Species) {
             const module = await import('./lib/desktop/features/analytics/pages/Species.svelte');
             Species = module.default;
+          }
+          break;
+        case 'yard-list':
+          if (!YardList) {
+            const module = await import('./lib/desktop/features/analytics/pages/YardList.svelte');
+            YardList = module.default;
           }
           break;
         case 'search':
@@ -330,6 +343,7 @@
     [uiPath('notifications')]: findRouteConfig('notifications'),
     [uiPath('analytics', 'species')]: findRouteConfig('species'),
     [uiPath('analytics', 'advanced')]: findRouteConfig('advanced-analytics'),
+    [uiPath('analytics', 'yard-list')]: findRouteConfig('yard-list'),
     [uiPath('analytics')]: findRouteConfig('analytics'),
     [uiPath('search')]: findRouteConfig('search'),
     [uiPath('detections')]: findRouteConfig('detections'),
@@ -620,6 +634,8 @@
       {@render renderRoute(AdvancedAnalytics)}
     {:else if currentRoute === 'species'}
       {@render renderRoute(Species)}
+    {:else if currentRoute === 'yard-list'}
+      {@render renderRoute(YardList)}
     {:else if currentRoute === 'search'}
       {@render renderRoute(Search)}
     {:else if currentRoute === 'about'}

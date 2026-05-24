@@ -70,24 +70,24 @@ func TestSettings_MigrateDashboardLayout(t *testing.T) {
 				elements := tt.settings.Realtime.Dashboard.Layout.Elements
 
 				// Verify element types, ordering, and enabled state
-				assert.Equal(t, "daily-summary", elements[0].Type)
+				assert.Equal(t, "currently-hearing", elements[0].Type)
 				assert.True(t, elements[0].Enabled)
-				assert.Equal(t, "currently-hearing", elements[1].Type)
+				assert.Equal(t, "live-spectrogram", elements[1].Type)
 				assert.True(t, elements[1].Enabled)
-				assert.Equal(t, "live-spectrogram", elements[2].Type)
+				assert.Equal(t, "daily-summary", elements[2].Type)
 				assert.True(t, elements[2].Enabled)
 				assert.Equal(t, "detections-grid", elements[3].Type)
 				assert.True(t, elements[3].Enabled)
 
 				// Verify stable IDs are generated
-				assert.Equal(t, "daily-summary-0", elements[0].ID)
-				assert.Equal(t, "currently-hearing-0", elements[1].ID)
-				assert.Equal(t, "live-spectrogram-0", elements[2].ID)
+				assert.Equal(t, "currently-hearing-0", elements[0].ID)
+				assert.Equal(t, "live-spectrogram-0", elements[1].ID)
+				assert.Equal(t, "daily-summary-0", elements[2].ID)
 				assert.Equal(t, "detections-grid-0", elements[3].ID)
 
 				// Verify summaryLimit is migrated into the element config
-				require.NotNil(t, elements[0].Summary)
-				assert.Equal(t, tt.expectLimit, elements[0].Summary.SummaryLimit)
+				require.NotNil(t, elements[2].Summary)
+				assert.Equal(t, tt.expectLimit, elements[2].Summary.SummaryLimit)
 
 				// Verify deprecated root SummaryLimit is zeroed out
 				assert.Equal(t, 0, tt.settings.Realtime.Dashboard.SummaryLimit)

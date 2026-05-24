@@ -985,14 +985,14 @@ function createEmptySettings(): SettingsFormData {
         temperatureUnit: 'celsius',
         layout: {
           elements: [
+            { id: 'currently-hearing-0', type: 'currently-hearing', enabled: true },
+            { id: 'live-spectrogram-0', type: 'live-spectrogram', enabled: true },
             {
               id: 'daily-summary-0',
               type: 'daily-summary',
               enabled: true,
               summary: { summaryLimit: 30 },
             },
-            { id: 'currently-hearing-0', type: 'currently-hearing', enabled: true },
-            { id: 'live-spectrogram-0', type: 'live-spectrogram', enabled: true },
             { id: 'detections-grid-0', type: 'detections-grid', enabled: true },
           ],
         },

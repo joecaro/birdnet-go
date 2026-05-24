@@ -438,15 +438,6 @@
         handleNotificationDeleted as globalThis.EventListener
       );
 
-      // Request notification permission after user interaction
-      if ('Notification' in globalThis.window && globalThis.Notification.permission === 'default') {
-        const requestPermission = () => {
-          globalThis.Notification.requestPermission();
-          globalThis.document.removeEventListener('click', requestPermission);
-        };
-        globalThis.document.addEventListener('click', requestPermission, { once: true });
-      }
-
       return () => {
         globalThis.document.removeEventListener('click', handleClickOutside);
         globalThis.window.removeEventListener(

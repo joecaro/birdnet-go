@@ -88,6 +88,10 @@
   import { schemaObjectTypeLabel } from '$lib/utils/alertSchema';
   import { translateField } from '$lib/utils/notifications';
   import { navigation } from '$lib/stores/navigation.svelte';
+  import {
+    browserDetectionNotificationState,
+    browserDetectionNotifications,
+  } from '$lib/stores/browserDetectionNotifications.svelte';
 
   const logger = loggers.settings;
 
@@ -102,6 +106,7 @@
   let channelStatusTimeout: ReturnType<typeof setTimeout>;
   let pushStatusTimeout: ReturnType<typeof setTimeout>;
   let ruleStatusTimeout: ReturnType<typeof setTimeout>;
+  let browserStatusTimeout: ReturnType<typeof setTimeout>;
 
   // ============================================================
   // Tab state
@@ -219,6 +224,9 @@
     customUrl: '',
   });
   let testingProvider = $state(false);
+  let testingBrowserNotification = $state(false);
+  let browserNotificationStatusMessage = $state('');
+  let browserNotificationStatusType = $state<'info' | 'success' | 'error'>('info');
 
   // Available services for the dropdown
   interface ServiceOption extends SelectOption {
@@ -452,6 +460,84 @@
   // ============================================================
   // Channels functions
   // ============================================================
+
+  let browserPermissionLabel = $derived.by(() => {
+    switch (browserDetectionNotificationState.permission) {
+      case 'granted':
+        return t('settings.notifications.browser.permission.granted');
+      case 'denied':
+        return t('settings.notifications.browser.permission.denied');
+      case 'default':
+        return t('settings.notifications.browser.permission.default');
+      default:
+        return t('settings.notifications.browser.permission.unsupported');
+    }
+  });
+
+  let browserPermissionHelp = $derived.by(() => {
+    switch (browserDetectionNotificationState.permission) {
+      case 'granted':
+        return browserDetectionNotificationState.isRunning
+          ? t('settings.notifications.browser.running')
+          : t('settings.notifications.browser.ready');
+      case 'denied':
+        return t('settings.notifications.browser.deniedHelp');
+      case 'default':
+        return t('settings.notifications.browser.defaultHelp');
+      default:
+        return t('settings.notifications.browser.unsupportedHelp');
+    }
+  });
+
+  let browserNotificationsBlocked = $derived(
+    browserDetectionNotificationState.permission === 'unsupported' ||
+      browserDetectionNotificationState.permission === 'denied'
+  );
+
+  function showBrowserNotificationStatus(message: string, type: 'info' | 'success' | 'error') {
+    browserNotificationStatusMessage = message;
+    browserNotificationStatusType = type;
+    clearTimeout(browserStatusTimeout);
+    browserStatusTimeout = setTimeout(
+      () => {
+        browserNotificationStatusMessage = '';
+      },
+      type === 'error' ? STATUS_DISMISS_ERROR_MS : STATUS_DISMISS_MS
+    );
+  }
+
+  async function toggleBrowserDetectionNotifications(enabled: boolean) {
+    const permission = await browserDetectionNotifications.setEnabled(enabled);
+    if (enabled && permission === 'granted') {
+      showBrowserNotificationStatus(t('settings.notifications.browser.enabledStatus'), 'success');
+    } else if (enabled && permission === 'denied') {
+      showBrowserNotificationStatus(t('settings.notifications.browser.deniedStatus'), 'error');
+    } else if (enabled && permission === 'unsupported') {
+      showBrowserNotificationStatus(t('settings.notifications.browser.unsupportedStatus'), 'error');
+    }
+  }
+
+  function updateBrowserCooldown(event: Event) {
+    const target = event.currentTarget as HTMLInputElement;
+    browserDetectionNotifications.updateSettings({
+      cooldownMinutes: Number.parseInt(target.value, 10),
+    });
+  }
+
+  async function sendBrowserTestNotification() {
+    testingBrowserNotification = true;
+    try {
+      const sent = await browserDetectionNotifications.showTestNotification();
+      showBrowserNotificationStatus(
+        sent
+          ? t('settings.notifications.browser.testSent')
+          : t('settings.notifications.browser.permissionRequired'),
+        sent ? 'success' : 'error'
+      );
+    } finally {
+      testingBrowserNotification = false;
+    }
+  }
 
   /** Wraps a bare IPv6 address in brackets for use in URLs. */
   function normalizeNtfyHost(host: string): string {
@@ -1391,6 +1477,108 @@
 <!-- ============================================================ -->
 {#snippet channelsContent()}
   <div class="space-y-6">
+    <SettingsSection
+      title={t('settings.notifications.browser.title')}
+      description={t('settings.notifications.browser.description')}
+      defaultOpen={true}
+    >
+      <div class="space-y-4">
+        <div
+          class="flex flex-col gap-4 rounded-lg border border-[var(--color-base-content)]/10 bg-[var(--color-base-200)]/50 p-4 sm:flex-row sm:items-start sm:justify-between"
+        >
+          <div class="min-w-0 flex-1 space-y-2">
+            <Checkbox
+              checked={browserDetectionNotificationState.enabled}
+              label={t('settings.notifications.browser.enable')}
+              disabled={browserNotificationsBlocked}
+              helpText={t('settings.notifications.browser.enableHelp')}
+              onchange={toggleBrowserDetectionNotifications}
+            />
+            <div class="flex flex-wrap items-center gap-2 pl-5">
+              <span
+                class="inline-flex items-center rounded-full border border-[var(--color-base-content)]/10 bg-[var(--color-base-100)] px-2 py-0.5 text-xs font-medium text-[var(--color-base-content)]/70"
+              >
+                {browserPermissionLabel}
+              </span>
+              {#if browserDetectionNotificationState.enabled}
+                <span
+                  class="inline-flex items-center rounded-full border border-[var(--color-success)]/25 bg-[var(--color-success)]/10 px-2 py-0.5 text-xs font-medium text-[var(--color-success)]"
+                >
+                  {browserDetectionNotificationState.isRunning
+                    ? t('settings.notifications.browser.streamActive')
+                    : t('settings.notifications.browser.streamStarting')}
+                </span>
+              {/if}
+            </div>
+            <p class="pl-5 text-xs text-[var(--color-base-content)]/60">
+              {browserPermissionHelp}
+            </p>
+          </div>
+
+          <div class="flex shrink-0 gap-2 sm:justify-end">
+            <SettingsButton
+              onclick={() => toggleBrowserDetectionNotifications(true)}
+              disabled={browserNotificationsBlocked || browserDetectionNotificationState.enabled}
+              disabledReason={browserPermissionHelp}
+              variant="secondary"
+            >
+              <Bell class="size-4" />
+              {t('settings.notifications.browser.allowButton')}
+            </SettingsButton>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+          <div>
+            <label for="browser-notification-cooldown" class="mb-1 block">
+              <span class="text-sm font-semibold text-[var(--color-base-content)]">
+                {t('settings.notifications.browser.cooldown.label')}
+              </span>
+            </label>
+            <div class="flex max-w-xs">
+              <input
+                id="browser-notification-cooldown"
+                type="number"
+                min="0"
+                max="1440"
+                step="1"
+                value={browserDetectionNotificationState.cooldownMinutes}
+                onchange={updateBrowserCooldown}
+                class="h-10 flex-1 rounded-l-lg border border-[var(--color-base-300)] bg-[var(--color-base-100)] px-3 text-sm transition-colors focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              />
+              <span
+                class="inline-flex items-center justify-center rounded-r-lg border border-l-0 border-[var(--color-base-300)] bg-[var(--color-base-300)] px-3 text-sm"
+                >{t('settings.notifications.browser.cooldown.unit')}</span
+              >
+            </div>
+            <p class="mt-1 text-xs text-[var(--color-base-content)]/60">
+              {t('settings.notifications.browser.cooldown.helpText')}
+            </p>
+          </div>
+
+          <SettingsButton
+            onclick={sendBrowserTestNotification}
+            loading={testingBrowserNotification}
+            loadingText={t('settings.notifications.browser.testingButton')}
+            disabled={testingBrowserNotification ||
+              browserDetectionNotificationState.permission !== 'granted'}
+            disabledReason={browserPermissionHelp}
+            variant="secondary"
+          >
+            <Bell class="size-4" />
+            {t('settings.notifications.browser.testButton')}
+          </SettingsButton>
+        </div>
+
+        {#if browserNotificationStatusMessage}
+          <StatusBanner
+            message={browserNotificationStatusMessage}
+            type={browserNotificationStatusType}
+          />
+        {/if}
+      </div>
+    </SettingsSection>
+
     <SettingsSection
       title={t('settings.notifications.tabs.channels')}
       description={t('settings.notifications.push.description')}

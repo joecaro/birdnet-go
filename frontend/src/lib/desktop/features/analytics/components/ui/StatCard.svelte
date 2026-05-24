@@ -25,21 +25,35 @@
   }: Props = $props();
 </script>
 
-<div class={cn('card bg-[var(--color-base-100)] shadow-xs', className)}>
-  <div class="card-body p-4 md:p-6">
-    <h2 class="card-title text-lg">{title}</h2>
-    <div class="flex items-center gap-3">
+<div
+  class={cn(
+    'card bg-[var(--color-base-100)] rounded-xl border border-[var(--border-100)]',
+    className
+  )}
+>
+  <div class="card-body p-3.5 md:p-4">
+    <h2 class="text-[11px] font-medium uppercase tracking-wider text-[var(--color-base-content)]/55">
+      {title}
+    </h2>
+    <div class="mt-2 flex items-center gap-3">
       {#if icon}
-        <div class={cn('w-12 h-12 rounded-full flex items-center justify-center', iconClassName)}>
+        <div
+          class={cn(
+            'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+            iconClassName
+          )}
+        >
           {@render icon()}
         </div>
       {/if}
-      <div>
-        <div class={cn('text-3xl font-bold', valueClassName)}>
-          {isLoading ? '...' : value}
+      <div class="min-w-0">
+        <div class={cn('text-2xl font-semibold leading-tight tabular-nums tracking-tight', valueClassName)}>
+          {isLoading ? '…' : value}
         </div>
         {#if subtitle}
-          <div class="text-xs text-[var(--color-base-content)] opacity-60">{subtitle}</div>
+          <div class="mt-0.5 text-xs text-[var(--color-base-content)]/55 truncate">
+            {subtitle}
+          </div>
         {/if}
       </div>
     </div>

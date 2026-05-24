@@ -36,6 +36,10 @@
     loadingText?: string;
     variant?: ButtonVariant;
     className?: string;
+    /** Reason the button is disabled. Surfaced as a tooltip + aria-describedby
+     *  so users (and screen readers) can tell why the action is blocked.
+     *  Required at the call site whenever `disabled` may be true. */
+    disabledReason?: string;
     children?: import('svelte').Snippet;
   }
 
@@ -46,6 +50,7 @@
     loadingText,
     variant = 'primary',
     className = '',
+    disabledReason,
     children,
   }: Props = $props();
 
@@ -76,6 +81,7 @@
   onclick={() => !isDisabled && onclick?.()}
   disabled={isDisabled}
   aria-busy={loading}
+  title={isDisabled && !loading ? disabledReason : undefined}
 >
   {#if loading}
     <span class="loading loading-spinner loading-xs"></span>

@@ -76,6 +76,7 @@
       "noNotifications": "Sin notificaciones",
       "silent": "(silencioso)",
       "loadingSettings": "Cargando configuración...",
+      "loadingNotifications": "Loading notifications...",
       "settingsNotFound": "Configuración no encontrada",
       "sectionNotFound": "Sección \"{section}\" no encontrada",
       "loadingMap": "Cargando mapa...",
@@ -586,10 +587,33 @@
   },
   "dashboard": {
     "approved": "Aprobado",
+    "setup": {
+      "title": "Finish setting up BirdNET-Go",
+      "subtitle": "A couple more steps and you're ready to start identifying birds.",
+      "allSetTitle": "You're all set",
+      "allSetSubtitle": "Required configuration is complete.",
+      "audio": "Add an audio source",
+      "location": "Set your location"
+    },
     "currentlyHearing": {
       "title": "Escuchando ahora",
       "subtitle": "Especies identificadas en tiempo real",
-      "empty": "Todo tranquilo — no se detectan aves en este momento"
+      "empty": "Todo tranquilo — no se detectan aves en este momento",
+      "status": {
+        "live": "Live",
+        "quiet": "Listening",
+        "offline": "Offline",
+        "paused": "Paused",
+        "connecting": "Connecting",
+        "reconnecting": "Reconnecting",
+        "historical": "History"
+      },
+      "metrics": {
+        "active": " active",
+        "hits": " hits",
+        "sources": " sources"
+      },
+      "hitCount": "{count} hits"
     },
     "rejected": "Rechazado",
     "dailySummary": {
@@ -1528,6 +1552,12 @@
   "analytics": {
     "title": "Resumen",
     "loadingError": "Error al cargar algunos datos analíticos. Por favor, inténtalo más tarde.",
+    "weather": {
+      "loading": "Loading weather…",
+      "sunrise": "Sunrise",
+      "sunset": "Sunset",
+      "illuminated": "illuminated"
+    },
     "stats": {
       "totalDetections": "Detecciones totales",
       "uniqueSpecies": "Especies únicas",
@@ -1584,6 +1614,25 @@
       "top10Species": "Top 10 especies",
       "detectionsByTimeOfDay": "Detecciones por hora del día",
       "detectionTrends": "Tendencias de detección",
+      "confidenceDistribution": "Confidence Distribution",
+      "confidenceDistributionSubtitle": "Detection count grouped by average confidence per species",
+      "detectionsByDayOfWeek": "Detections by Day of Week",
+      "detectionsBySeason": "Detections by Season",
+      "days": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      },
+      "seasons": {
+        "spring": "Spring",
+        "summer": "Summer",
+        "fall": "Fall",
+        "winter": "Winter"
+      },
       "newSpeciesDetected": "Nuevas especies detectadas",
       "noNewSpecies": "No se detectaron nuevas especies en este período.",
       "noDataAvailable": "No hay datos disponibles",
@@ -1607,6 +1656,23 @@
       "noRecentDetections": "No se encontraron detecciones recientes",
       "unknownSpecies": "Desconocida",
       "unknown": "Desconocida"
+    },
+    "yardList": {
+      "pageTitle": "Yard List — BirdNET-Go",
+      "title": "Yard List",
+      "subtitle": "Every species detected here, with the date you first heard each one.",
+      "totalSpecies": "Lifers",
+      "searchPlaceholder": "Search common or scientific name…",
+      "loading": "Loading yard list…",
+      "loadError": "Could not load yard list. Try again later.",
+      "empty": "No species detected yet. Once BirdNET hears its first bird, it will appear here.",
+      "noMatch": "No species match that search.",
+      "columns": {
+        "species": "Species",
+        "firstSeen": "First heard",
+        "lastSeen": "Most recent",
+        "count": "Detections"
+      }
     },
     "species": {
       "title": "Especies",
@@ -1719,6 +1785,11 @@
       "notifications": "Notificaciones",
       "support": "Soporte"
     },
+    "groups": {
+      "detection": "Detection",
+      "alerts": "Alerts & Integrations",
+      "system": "System"
+    },
     "notFound": {
       "title": "Configuración no encontrada",
       "message": "No se pudo encontrar la sección de configuración solicitada \"{section}\"."
@@ -1755,6 +1826,10 @@
         "detection": "Detección",
         "location": "Ubicación",
         "database": "Base de datos"
+      },
+      "mapButtons": {
+        "loading": "Map library is still loading…",
+        "unavailable": "Map is unavailable"
       },
       "sections": {
         "main": {
@@ -2201,6 +2276,42 @@
         "channels": "Canales",
         "rules": "Reglas",
         "history": "Historial"
+      },
+      "browser": {
+        "title": "Browser Notifications",
+        "description": "Show desktop notifications from this browser when new birds are detected.",
+        "enable": "Notify me about new detections",
+        "enableHelp": "Notifications are sent only while BirdNET-Go is open and this tab or window is not focused.",
+        "allowButton": "Allow",
+        "testButton": "Send Test",
+        "testingButton": "Sending...",
+        "running": "Listening for detections in the background. Notifications appear when this tab is hidden or unfocused.",
+        "ready": "Permission is allowed. Enable notifications to start the background listener.",
+        "defaultHelp": "Allow browser notifications to receive alerts when this tab is in the background.",
+        "deniedHelp": "Notifications are blocked for this site. Re-enable them in your browser site settings.",
+        "unsupportedHelp": "This browser does not support desktop notifications.",
+        "streamActive": "Running",
+        "streamStarting": "Starting",
+        "enabledStatus": "Browser detection notifications enabled.",
+        "deniedStatus": "Browser notifications are blocked for this site.",
+        "unsupportedStatus": "This browser does not support desktop notifications.",
+        "permissionRequired": "Browser notification permission is required before sending a test.",
+        "testSent": "Test notification sent.",
+        "permission": {
+          "granted": "Allowed",
+          "denied": "Blocked",
+          "default": "Not allowed yet",
+          "unsupported": "Unsupported"
+        },
+        "cooldown": {
+          "label": "Species Cooldown",
+          "unit": "min",
+          "helpText": "Avoid repeated browser notifications for the same species. Set to 0 to notify every detection."
+        },
+        "errors": {
+          "requestFailed": "Could not request browser notification permission.",
+          "stream": "Detection notification stream is reconnecting."
+        }
       },
       "rules": {
         "summary": {
@@ -4381,6 +4492,12 @@
     "indicator": {
       "tooltip": "Horas de silencio activas — {count} fuente(s) en pausa"
     }
+  },
+  "browserNotifications": {
+    "detectionTitle": "{species} detected",
+    "bodyFallback": "New bird detection",
+    "confidence": "{confidence}% confidence",
+    "testSpecies": "Test bird"
   },
   "errors": {
     "auth": {

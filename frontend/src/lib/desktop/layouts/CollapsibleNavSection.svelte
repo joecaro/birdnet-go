@@ -21,7 +21,15 @@
     trailingIcon?: Component;
   }
 
-  export type NavItem = NavButtonItem | NavLinkItem;
+  /** Non-interactive subsection heading. Used to group related items inside a section. */
+  export interface NavHeadingItem {
+    type: 'heading';
+    label: string;
+    /** Stable key for use in {#each} loops */
+    key: string;
+  }
+
+  export type NavItem = NavButtonItem | NavLinkItem | NavHeadingItem;
 
   interface Props {
     icon: Component;
@@ -119,8 +127,14 @@
           {label}
         </div>
         <div class="p-1 max-h-[calc(100vh-8rem)] overflow-y-auto">
-          {#each items as item (item.type === 'link' ? item.label : item.routeKey)}
-            {#if item.type === 'link'}
+          {#each items as item (item.type === 'link' ? `link-${item.label}` : item.type === 'heading' ? `h-${item.key}` : item.routeKey)}
+            {#if item.type === 'heading'}
+              <div
+                class="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-base-content)]/40"
+              >
+                {item.label}
+              </div>
+            {:else if item.type === 'link'}
               <a
                 href={item.href}
                 target="_blank"
@@ -179,8 +193,17 @@
         class="ml-4 pl-4 border-l-2 mt-1 flex flex-col gap-0.5"
         style:border-color="color-mix(in oklch, var(--color-primary) 30%, transparent)"
       >
-        {#each items as item (item.type === 'link' ? item.label : item.routeKey)}
-          {#if item.type === 'link'}
+        {#each items as item, i (item.type === 'link' ? `link-${item.label}` : item.type === 'heading' ? `h-${item.key}` : item.routeKey)}
+          {#if item.type === 'heading'}
+            <div
+              class={cn(
+                'px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-base-content)]/40',
+                i === 0 ? 'pt-0' : 'pt-3'
+              )}
+            >
+              {item.label}
+            </div>
+          {:else if item.type === 'link'}
             <a
               href={item.href}
               target="_blank"

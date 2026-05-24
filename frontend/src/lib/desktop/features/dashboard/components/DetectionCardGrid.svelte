@@ -177,20 +177,20 @@
 
 <section
   class={cn(
-    'card col-span-12 h-full bg-[var(--color-base-100)] shadow-sm rounded-2xl border border-border-100 overflow-hidden',
+    'card col-span-12 h-full overflow-hidden rounded-xl border border-border-100 bg-[var(--color-base-100)] shadow-xs',
     className
   )}
 >
   <!-- Card Header -->
-  <div class="px-6 py-4 border-b border-[var(--color-base-200)]">
+  <div class="border-b border-[var(--color-base-200)] px-4 py-3">
     <div class="flex items-center justify-between">
       <div class="flex flex-col">
-        <h3 class="font-semibold">{t('dashboard.recentDetections.title')}</h3>
-        <p class="text-sm text-[var(--color-base-content)]/60">
+        <h3 class="text-sm font-semibold">{t('dashboard.recentDetections.title')}</h3>
+        <p class="text-xs text-[var(--color-base-content)]/55">
           {t('dashboard.recentDetections.subtitle')}
         </p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
         <!-- Custom Show Limit Dropdown -->
         <div class="limit-dropdown-container">
           <button
@@ -256,7 +256,7 @@
   </div>
 
   <!-- Content -->
-  <div class="detection-grid-container p-4">
+  <div class="detection-grid-container p-3">
     {#if error}
       <div class="alert alert-error">
         <XCircle class="size-6" />
@@ -274,7 +274,7 @@
         {/if}
 
         <!-- Detection Cards Grid -->
-        <div class="detection-cards-grid gap-4">
+        <div class="detection-cards-grid gap-3">
           {#each data.slice(0, selectedLimit) as detection (detection.id)}
             <DetectionCard
               {detection}
@@ -293,7 +293,7 @@
         </div>
 
         {#if data.length === 0}
-          <div class="text-center py-8 text-[var(--color-base-content)]/60">
+          <div class="py-8 text-center text-sm text-[var(--color-base-content)]/60">
             {t('dashboard.recentDetections.noDetections')}
           </div>
         {/if}
@@ -327,10 +327,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
-    min-width: 4.5rem;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    gap: 0.375rem;
+    min-width: 3.75rem;
+    padding: 0.375rem 0.625rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     border-radius: 0.5rem;
     border: 1px solid var(--border-100);
@@ -382,8 +382,8 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    padding: 0.4375rem 0.625rem;
+    font-size: 0.8125rem;
     font-weight: 500;
     border-radius: 0.375rem;
     background-color: transparent;
